@@ -1,0 +1,27 @@
+<p>&nbsp;</p>
+<h3><?php _e('PDF Settings', 'pdf-bridge')?></h3>
+<p><?php _e('Paper size:', 'pdf-bridge')?> <select name="pdf_bridge_paper_size">
+	<?php foreach($paper_sizes as $size):
+		if(!empty($cert_settings['paper_size']) and $cert_settings['paper_size'] == $size) $selected = ' selected';
+		else $selected = ''; ?>
+		<option value="<?php echo $size?>"<?php echo $selected?>><?php echo $size;?></option>
+	<?php endforeach;?>
+</select>
+&nbsp;
+<?php _e('Orientation:', 'pdf-bridge')?> <select name="pdf_bridge_orientation">
+	<option value="" <?php if(empty($cert_settings['orientation'])) echo 'selected'?>><?php _e('Portrait', 'pdf-bridge')?></option>
+	<option value="-L" <?php if(!empty($cert_settings['orientation']) and $cert_settings['orientation'] == '-L') echo 'selected'?>><?php _e('Landscape', 'pdf-bridge')?></option>
+</select></p>
+<p><input type="checkbox" name="pdf_bridge_force_download" value="1" <?php if(!empty($cert_settings['force_download'])) echo 'checked'?> onclick="this.checked ? jQuery('#forceDownloadOption').show():jQuery('#forceDownloadOption').hide();" > <?php _e('Force file download', 'pdf-bridge');?> &nbsp;
+<span id="forceDownloadOption" style="display:<?php echo (!empty($cert_settings['force_download'])) ? 'inline':'none';?>"><?php _e('File name:', 'pdf-bridge')?> <input type="text" name="pdf_bridge_file_name" value="<?php echo stripslashes(@$cert_settings['file_name']);?>"></span></p>
+
+<p><?php _e('Optional background image:', 'pdf-bridge');?> <input type="text" size="60" value="<?php echo @$cert_settings['background_image']?>" name="pdf_bridge_background_image"> <?php printf(__('(Enter URL of the .jpg or .png image (not .gif). You can upload it on your <a href="%s" target="_blank">media library</a> and get the URL from it.)', 'pdf-bridge'), 'upload.php');?><br>
+<?php _e('Resize:', 'pdf-bridge');?> <select name="pdf_bridge_background_resize">
+   <option value="0" <?php if(empty($cert_settings['background_resize'])) echo 'selected'?>><?php _e('No resize', 'pdf-bridge');?></option>
+   <option value="1" <?php if(!empty($cert_settings['background_resize']) and $cert_settings['background_resize'] == 1) echo 'selected'?>><?php _e('Shrink to fit width', 'pdf-bridge');?></option>
+   <option value="2" <?php if(!empty($cert_settings['background_resize']) and $cert_settings['background_resize'] == 2) echo 'selected'?>><?php _e('Shrink to fit height', 'pdf-bridge');?></option>
+   <option value="3" <?php if(!empty($cert_settings['background_resize']) and $cert_settings['background_resize'] == 3) echo 'selected'?>><?php _e('Shrink to fit width and height', 'pdf-bridge');?></option>
+   <option value="4" <?php if(!empty($cert_settings['background_resize']) and $cert_settings['background_resize'] == 4) echo 'selected'?>><?php _e('Resize to fit width', 'pdf-bridge');?></option>
+   <option value="5" <?php if(!empty($cert_settings['background_resize']) and $cert_settings['background_resize'] == 5) echo 'selected'?>><?php _e('Resize to fit height', 'pdf-bridge');?></option>
+   <option value="6" <?php if(!empty($cert_settings['background_resize']) and $cert_settings['background_resize'] == 6) echo 'selected'?>><?php _e('Resize to fit width and height', 'pdf-bridge');?></option>
+</select></p>
