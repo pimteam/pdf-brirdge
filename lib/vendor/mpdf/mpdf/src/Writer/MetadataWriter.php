@@ -808,7 +808,7 @@ class MetadataWriter implements \Psr\Log\LoggerAwareInterface
 		}
 	}
 
-	public function setLogger(LoggerInterface $logger)
+	public function setLogger( $logger)
 	{
 		$this->logger = $logger;
 	}

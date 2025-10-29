@@ -131,7 +131,7 @@ class ImageProcessor implements \Psr\Log\LoggerAwareInterface
 	 *
 	 * @return self
 	 */
-	public function setLogger(LoggerInterface $logger)
+	public function setLogger($logger)
 	{
 		$this->logger = $logger;
 
