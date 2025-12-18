@@ -29,7 +29,9 @@ function pdf_bridge_init() {
 // param $settings is optional array of PDF settings, same like in WatuPRO or Namaste
 // $pdf_settings is optional array that can be passed to the function instead of it reading it from $content
 function pdfbridge_html2pdf($content, $pdf_settings = null) {	
-	include_once(PDF_BRIDGE_PATH.'/lib/vendor/autoload.php');
+	if (!class_exists('Mpdf\Mpdf')) {
+		include_once(PDF_BRIDGE_PATH.'/lib/vendor/autoload.php');
+	}
 	
 	// extract the ID from contents
 	if(strstr($content, '-watupro-certificate-id-')) {
