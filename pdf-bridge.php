@@ -4,7 +4,7 @@ Plugin Name: PDF Bridge
 Plugin URI: 
 Description: This is a plugin for developers. It lets you convert your HTML content to PDF and then do whatever you want with it (save it as file or output it). Uses the <a href="http://www.mpdf1.com/mpdf/index.php" target="_blank">MPDF library</a>
 Author: Kiboko Labs
-Version: 2.0.2
+Version: 2.0.3
 Author URI: http://calendarscripts.info/
 License: GPLv2 or later
 */
@@ -88,6 +88,22 @@ function pdfbridge_html2pdf($content, $pdf_settings = null) {
 	if(!empty($pdf_settings['pdf_header'])) $mpdf->SetHTMLHeader($pdf_settings['pdf_header']);
 	if(!empty($pdf_settings['pdf_footer'])) $mpdf->SetHTMLFooter($pdf_settings['pdf_footer']);
 	
+	if (!empty($pdf_settings['background_image'])) {
+		$content = '<style type="text/css">
+			body {
+				background-image: url('
+				. esc_url($pdf_settings['background_image'])
+				. ');
+				background-image-resize: '
+				. intval($pdf_settings['background_resize'])
+				. ';
+			}
+		</style>' . "\n" . $content;
+	}
+
+	// Convert relative WordPress resource paths to local files.
+	$content = pdf_bridge_localize_resources($content);
+
 	$mpdf->WriteHTML($content);
 	if(!empty($_GET['certificate_as_attachment'])) $pdf_settings['certificate_as_attachment'] = $_GET['certificate_as_attachment'];
 	if(!empty($pdf_settings['force_download']) and empty($pdf_settings['certificate_as_attachment'])) $mpdf->Output($pdf_settings['file_name'], 'D');
@@ -179,3 +195,214 @@ function pdf_bridge_add_settings_page() {
     add_options_page( 'PDF Bridge', 'PDF Bridge', 'manage_options', 'pdf_bridge', 'pdf_bridge_options' );
 }
 add_action( 'admin_menu', 'pdf_bridge_add_settings_page' );
+
+
+/**
+ * Convert WordPress content image URLs and relative paths
+ * to local filesystem paths for mPDF.
+ */
+function pdf_bridge_localize_resources($html) {
+    $uploads = wp_upload_dir();
+
+    if (!empty($uploads['error'])) {
+        error_log(
+            'PDF Bridge: wp_upload_dir() error: ' . $uploads['error']
+        );
+
+        return $html;
+    }
+
+    $uploads_base_url = trailingslashit($uploads['baseurl']);
+    $uploads_base_dir = trailingslashit(
+        wp_normalize_path($uploads['basedir'])
+    );
+
+    $content_base_url = trailingslashit(content_url());
+    $content_base_dir = trailingslashit(
+        wp_normalize_path(WP_CONTENT_DIR)
+    );
+
+    $resolve_resource = static function ($resource) use (
+        $uploads_base_url,
+        $uploads_base_dir,
+        $content_base_url,
+        $content_base_dir
+    ) {
+        $resource = html_entity_decode(
+            trim($resource),
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8'
+        );
+
+        if ($resource === '') {
+            return $resource;
+        }
+
+        // Do not modify inline images, anchors and special schemes.
+        if (
+            preg_match(
+                '~^(?:data:|cid:|blob:|javascript:|mailto:|#)~i',
+                $resource
+            )
+        ) {
+            return $resource;
+        }
+
+        // Preserve query string for now, but don't use it in file paths.
+        $resource_without_query = preg_split(
+            '/[?#]/',
+            $resource,
+            2
+        )[0];
+
+        $resource_without_query = rawurldecode(
+            $resource_without_query
+        );
+
+        $candidate = '';
+
+        /*
+         * Case 1:
+         * https://example.com/wp-content/uploads/...
+         */
+        if (strpos($resource, $uploads_base_url) === 0) {
+            $relative = substr(
+                $resource_without_query,
+                strlen($uploads_base_url)
+            );
+
+            $candidate = $uploads_base_dir
+                . ltrim($relative, '/');
+        }
+
+        /*
+         * Case 2:
+         * https://example.com/wp-content/...
+         */
+        elseif (strpos($resource, $content_base_url) === 0) {
+            $relative = substr(
+                $resource_without_query,
+                strlen($content_base_url)
+            );
+
+            $candidate = $content_base_dir
+                . ltrim($relative, '/');
+        }
+
+        /*
+         * Case 3:
+         * wp-content/uploads/2025/08/logo2.webp
+         * /wp-content/uploads/2025/08/logo2.webp
+         */
+        elseif (
+            preg_match(
+                '~^/?wp-content/(.+)$~i',
+                $resource_without_query,
+                $matches
+            )
+        ) {
+            $candidate = $content_base_dir . $matches[1];
+        }
+
+        /*
+         * Case 4:
+         * Relative uploads path:
+         * uploads/2025/08/logo2.webp
+         */
+        elseif (
+            preg_match(
+                '~^/?uploads/(.+)$~i',
+                $resource_without_query,
+                $matches
+            )
+        ) {
+            $candidate = $uploads_base_dir . $matches[1];
+        }
+
+        /*
+         * Do not modify other absolute URLs.
+         */
+        elseif (
+            preg_match('~^[a-z][a-z0-9+.-]*://~i', $resource) ||
+            strpos($resource, '//') === 0
+        ) {
+            return $resource;
+        }
+
+        /*
+         * Generic root-relative resource.
+         */
+        elseif (strpos($resource_without_query, '/') === 0) {
+            $candidate = wp_normalize_path(
+                ABSPATH . ltrim($resource_without_query, '/')
+            );
+        }
+
+        /*
+         * Generic relative resource.
+         */
+        else {
+            $candidate = wp_normalize_path(
+                ABSPATH . ltrim($resource_without_query, '/')
+            );
+        }
+
+        if ($candidate === '') {
+            return $resource;
+        }
+
+        $candidate = wp_normalize_path($candidate);
+        $real_file = realpath($candidate);
+
+        if (!$real_file || !is_file($real_file)) {
+            error_log(
+                sprintf(
+                    'PDF Bridge: Local resource not found. Resource: %s; Candidate: %s',
+                    $resource,
+                    $candidate
+                )
+            );
+
+            return $resource;
+        }
+
+        return wp_normalize_path($real_file);
+    };
+
+    // Handle <img src="...">.
+    $html = preg_replace_callback(
+        '~(<img\b[^>]*\bsrc\s*=\s*)(["\'])(.*?)\2~is',
+        static function ($matches) use ($resolve_resource) {
+            return $matches[1]
+                . $matches[2]
+                . esc_attr($resolve_resource($matches[3]))
+                . $matches[2];
+        },
+        $html
+    );
+
+    // Handle unquoted <img src=...>.
+    $html = preg_replace_callback(
+        '~(<img\b[^>]*\bsrc\s*=\s*)(?!["\'])([^\s>]+)~is',
+        static function ($matches) use ($resolve_resource) {
+            return $matches[1]
+                . '"'
+                . esc_attr($resolve_resource($matches[2]))
+                . '"';
+        },
+        $html
+    );
+
+    // Handle CSS url(...), including background images.
+    $html = preg_replace_callback(
+        '~url\(\s*(["\']?)(.*?)\1\s*\)~is',
+        static function ($matches) use ($resolve_resource) {
+            $resolved = $resolve_resource($matches[2]);
+
+            return 'url("' . esc_attr($resolved) . '")';
+        },
+        $html
+    );
+
+    return $html;
+}
