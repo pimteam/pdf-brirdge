@@ -4,7 +4,7 @@ Plugin Name: PDF Bridge
 Plugin URI: 
 Description: This is a plugin for developers. It lets you convert your HTML content to PDF and then do whatever you want with it (save it as file or output it). Uses the <a href="http://www.mpdf1.com/mpdf/index.php" target="_blank">MPDF library</a>
 Author: Kiboko Labs
-Version: 2.0.3
+Version: 2.0.4
 Author URI: http://calendarscripts.info/
 License: GPLv2 or later
 */
@@ -29,9 +29,7 @@ function pdf_bridge_init() {
 // param $settings is optional array of PDF settings, same like in WatuPRO or Namaste
 // $pdf_settings is optional array that can be passed to the function instead of it reading it from $content
 function pdfbridge_html2pdf($content, $pdf_settings = null) {	
-	if (!class_exists('Mpdf\Mpdf')) {
-		include_once(PDF_BRIDGE_PATH.'/lib/vendor/autoload.php');
-	}
+	require_once PDF_BRIDGE_PATH . '/lib/build/vendor/autoload.php';
 	
 	// extract the ID from contents
 	if(strstr($content, '-watupro-certificate-id-')) {
@@ -51,7 +49,7 @@ function pdfbridge_html2pdf($content, $pdf_settings = null) {
    $paper_size = empty($pdf_settings['paper_size']) ? 'Letter' : $pdf_settings['paper_size'];
    $orientation = @$pdf_settings['orientation'];
       
-	$mpdf = new \Mpdf\Mpdf(['mode' => 'utf-8', 'format' => $paper_size.$orientation, 'setAutoBottomMargin' => 'stretch', 'setAutoTopMargin' => 'stretch']);
+	$mpdf = new \PdfBridge\Mpdf\Mpdf(['mode' => 'utf-8', 'format' => $paper_size.$orientation, 'setAutoBottomMargin' => 'stretch', 'setAutoTopMargin' => 'stretch']);
 	
 	// false by default
 	$mpdf->curlAllowUnsafeSslRequests = false; // switching to true may help sometimes to load images
