@@ -15,7 +15,6 @@ use PdfBridge\Mpdf\QrCode;
 use PdfBridge\Mpdf\Utils\Arrays;
 use PdfBridge\Mpdf\Utils\NumericString;
 use PdfBridge\Mpdf\Utils\UtfString;
-use PdfBridge\Mpdf\Utils\Path;
 use PdfBridge\Psr\Log\NullLogger;
 /**
  * mPDF, PHP library generating PDF files from UTF-8 encoded HTML
@@ -30,7 +29,7 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
     use Strict;
     use FpdiTrait;
     use MpdfPsrLogAwareTrait;
-    const VERSION = '8.3.1';
+    const VERSION = '8.2.7';
     const SCALE = 72 / 25.4;
     const OBJECT_IDENTIFIER = "\xbb\xa4\xac";
     var $useFixedNormalLineHeight;
@@ -292,6 +291,10 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
     var $lastblocklevelchange;
     var $nestedtablejustfinished;
     var $linebreakjustfinished;
+    var $cell_border_dominance_L;
+    var $cell_border_dominance_R;
+    var $cell_border_dominance_T;
+    var $cell_border_dominance_B;
     var $table_keep_together;
     var $plainCell_properties;
     var $shrin_k1;
@@ -784,12 +787,8 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
      */
     private $cssManager;
     /**
-    * @var ShadowParser
-    	private $shadowParser;
-    
-    	/**
-    * @var \Mpdf\Gradient
-    */
+     * @var \Mpdf\Gradient
+     */
     private $gradient;
     /**
      * @var \Mpdf\Image\Bmp
@@ -974,7 +973,7 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
         $this->BMPonly = [];
         $this->page = 0;
         $this->n = 2;
-        $this->buffer = new Buffer();
+        $this->buffer = '';
         $this->objectbuffer = [];
         $this->pages = [];
         $this->OrientationChanges = [];
@@ -8395,7 +8394,7 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
         }
         $this->logger->debug(sprintf('Compiled in %.6F seconds', microtime(\true) - $this->time0), ['context' => LogContext::STATISTICS]);
         $this->logger->debug(sprintf('Peak Memory usage %s MB', number_format(memory_get_peak_usage(\true) / (1024 * 1024), 2)), ['context' => LogContext::STATISTICS]);
-        $this->logger->debug(sprintf('PDF file size %s kB', number_format($this->buffer->getLength() / 1024)), ['context' => LogContext::STATISTICS]);
+        $this->logger->debug(sprintf('PDF file size %s kB', number_format(strlen($this->buffer) / 1024)), ['context' => LogContext::STATISTICS]);
         $this->logger->debug(sprintf('%d fonts used', count($this->fonts)), ['context' => LogContext::STATISTICS]);
         if (is_bool($dest)) {
             $dest = $dest ? Destination::DOWNLOAD : Destination::FILE;
@@ -8422,7 +8421,7 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
                     header('Content-Type: application/pdf');
                     if (!isset($_SERVER['HTTP_ACCEPT_ENCODING']) || empty($_SERVER['HTTP_ACCEPT_ENCODING'])) {
                         // don't use length if server using compression
-                        header('Content-Length: ' . $this->buffer->getLength());
+                        header('Content-Length: ' . strlen($this->buffer));
                     }
                     header('Content-disposition: inline; filename="' . $name . '"');
                     header('Cache-Control: public, must-revalidate, max-age=0');
@@ -8431,7 +8430,7 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
                     header('Expires: Sat, 26 Jul 1997 05:00:00 GMT');
                     header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
                 }
-                $this->buffer->writeToOutput();
+                echo $this->buffer;
                 break;
             case Destination::DOWNLOAD:
                 if (headers_sent()) {
@@ -8447,22 +8446,22 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
                 header('Content-Type: application/pdf');
                 if (!isset($_SERVER['HTTP_ACCEPT_ENCODING']) || empty($_SERVER['HTTP_ACCEPT_ENCODING'])) {
                     // don't use length if server using compression
-                    header('Content-Length: ' . $this->buffer->getLength());
+                    header('Content-Length: ' . strlen($this->buffer));
                 }
                 header('Content-Disposition: attachment; filename="' . $name . '"');
-                $this->buffer->writeToOutput();
+                echo $this->buffer;
                 break;
             case Destination::FILE:
                 $f = fopen($name, 'wb');
                 if (!$f) {
                     throw new \PdfBridge\Mpdf\MpdfException(sprintf('Unable to create output file %s', $name));
                 }
-                $this->buffer->writeToFile($f);
+                fwrite($f, $this->buffer, strlen($this->buffer));
                 fclose($f);
                 break;
             case Destination::STRING_RETURN:
                 $this->cache->clearOld();
-                return $this->buffer->writeToString();
+                return $this->buffer;
             default:
                 throw new \PdfBridge\Mpdf\MpdfException(sprintf('Incorrect output destination %s', $dest));
         }
@@ -8855,7 +8854,7 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
         $this->writer->write('>>');
         $this->writer->write('endobj');
         // Cross-ref
-        $o = $this->buffer->getLength();
+        $o = strlen($this->buffer);
         $this->writer->write('xref');
         $this->writer->write('0 ' . ($this->n + 1));
         $this->writer->write('0000000000 65535 f ');
@@ -8869,7 +8868,7 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
         $this->writer->write('>>');
         $this->writer->write('startxref');
         $this->writer->write($o);
-        $this->buffer->append('%%EOF');
+        $this->buffer .= '%%EOF';
         $this->state = 3;
     }
     function _beginpage($orientation, $mgl = '', $mgr = '', $mgt = '', $mgb = '', $mgh = '', $mgf = '', $ohname = '', $ehname = '', $ofname = '', $efname = '', $ohvalue = 0, $ehvalue = 0, $ofvalue = 0, $efvalue = 0, $pagesel = '', $newformat = '')
@@ -10077,8 +10076,67 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
     }
     public function GetFullPath(&$path, $basepath = '')
     {
-        $basepath = !empty($basepath) ? $basepath : $this->basepath;
-        $path = Path::relativeToAbsolutePath($path, $basepath);
+        // @todo make return, remove reference
+        // When parsing CSS need to pass temporary basepath - so links are relative to current stylesheet
+        if (!$basepath) {
+            $basepath = $this->basepath;
+        }
+        // Fix path value
+        $path = str_replace("\\", '/', $path);
+        // If on Windows
+        // mPDF 5.7.2
+        if (strpos($path, '//') === 0) {
+            $scheme = parse_url($basepath, \PHP_URL_SCHEME);
+            $scheme = $scheme ?: 'http';
+            $path = $scheme . ':' . $path;
+        }
+        $path = preg_replace('|^./|', '', $path);
+        // Inadvertently corrects "./path/etc" and "//www.domain.com/etc"
+        if (strpos($path, '#') === 0) {
+            return;
+        }
+        // Skip schemes not supported by installed stream wrappers
+        $wrappers = stream_get_wrappers();
+        $pattern = sprintf('@^(?!%s)[a-z0-9\.\-+]+:.*@i', implode('|', $wrappers));
+        if (preg_match($pattern, $path)) {
+            return;
+        }
+        if (strpos($path, '../') === 0) {
+            // It is a relative link
+            $backtrackamount = substr_count($path, '../');
+            $maxbacktrack = substr_count($basepath, '/') - 3;
+            $filepath = str_replace('../', '', $path);
+            $path = $basepath;
+            // If it is an invalid relative link, then make it go to directory root
+            if ($backtrackamount > $maxbacktrack) {
+                $backtrackamount = $maxbacktrack;
+            }
+            // Backtrack some directories
+            for ($i = 0; $i < $backtrackamount + 1; $i++) {
+                $path = substr($path, 0, strrpos($path, "/"));
+            }
+            $path .= '/' . $filepath;
+            // Make it an absolute path
+            return;
+        }
+        if ((strpos($path, ":/") === \false || strpos($path, ":/") > 10) && !@is_file($path)) {
+            // It is a local link. Ignore potential file errors
+            if (strpos($path, '/') === 0) {
+                $tr = parse_url($basepath);
+                // mPDF 5.7.2
+                $root = '';
+                if (!empty($tr['scheme'])) {
+                    $root .= $tr['scheme'] . '://';
+                }
+                $root .= isset($tr['host']) ? $tr['host'] : '';
+                $root .= isset($tr['port']) && $tr['port'] ? ':' . $tr['port'] : '';
+                // mPDF 5.7.3
+                $path = $root . $path;
+                return;
+            }
+            $path = $basepath . $path;
+        }
+        // Do nothing if it is an Absolute Link
     }
     function docPageNum($num = 0, $extras = \false)
     {
@@ -11605,7 +11663,7 @@ class Mpdf implements \PdfBridge\Psr\Log\LoggerAwareInterface
         }
         $properties = $this->cssManager->MergeCSS('BLOCK', 'BODY', '');
         if ($zproperties) {
-            $properties = Arrays::uniqueRecursiveMerge($properties, $zproperties);
+            $properties = $this->cssManager->array_merge_recursive_unique($properties, $zproperties);
         }
         if (isset($properties['DIRECTION']) && $properties['DIRECTION']) {
             $this->cssManager->CSS['BODY']['DIRECTION'] = $properties['DIRECTION'];

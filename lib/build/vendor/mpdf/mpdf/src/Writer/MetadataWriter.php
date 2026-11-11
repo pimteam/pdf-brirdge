@@ -674,7 +674,7 @@ class MetadataWriter implements \PdfBridge\Psr\Log\LoggerAwareInterface
             $this->writer->write('/Encrypt ' . $this->mpdf->enc_obj_id . ' 0 R');
             $this->writer->write('/ID [<' . $this->protection->getUniqid() . '> <' . $this->protection->getUniqid() . '>]');
         } else {
-            $uniqid = md5(time() . $this->mpdf->buffer->getHash());
+            $uniqid = md5(time() . $this->mpdf->buffer);
             $this->writer->write('/ID [<' . $uniqid . '> <' . $uniqid . '>]');
         }
     }

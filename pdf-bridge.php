@@ -4,7 +4,7 @@ Plugin Name: PDF Bridge
 Plugin URI: 
 Description: This is a plugin for developers. It lets you convert your HTML content to PDF and then do whatever you want with it (save it as file or output it). Uses the <a href="http://www.mpdf1.com/mpdf/index.php" target="_blank">MPDF library</a>
 Author: Kiboko Labs
-Version: 2.0.4
+Version: 2.0.5
 Author URI: http://calendarscripts.info/
 License: GPLv2 or later
 */

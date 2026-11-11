@@ -9,7 +9,7 @@ use PdfBridge\Mpdf\Log\Context as LogContext;
 use PdfBridge\Mpdf\PsrHttpMessageShim\Request;
 use PdfBridge\Mpdf\PsrLogAwareTrait\PsrLogAwareTrait;
 use PdfBridge\Psr\Log\LoggerInterface;
-class AssetFetcher implements \PdfBridge\Psr\Log\LoggerAwareInterface, \PdfBridge\Mpdf\AssetFetcherInterface
+class AssetFetcher implements \PdfBridge\Psr\Log\LoggerAwareInterface
 {
     use PsrLogAwareTrait;
     private $mpdf;

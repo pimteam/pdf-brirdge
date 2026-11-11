@@ -48,8 +48,7 @@
     "suggest": {
         "ext-bcmath": "Needed for generation of some types of barcodes",
         "ext-zlib": "Needed for compression of embedded resources, such as fonts",
-        "ext-xml": "Needed mainly for SVG manipulation",
-        "ext-imagick": "Needed if developing the Mpdf library"
+        "ext-xml": "Needed mainly for SVG manipulation"
     },
     "autoload": {
         "psr-4": {
@@ -61,9 +60,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "PdfBridge\\Mpdf\\": "tests\/Mpdf",
-            "PdfBridge\\Snapshots\\": "tests\/Snapshots",
-            "PdfBridge\\Issues\\": "tests\/Issues"
+            "PdfBridge\\Mpdf\\": "tests\/Mpdf"
         },
         "files": [
             "src\/functions-dev.php"
@@ -74,7 +71,6 @@
             "php -r \"chmod('.\/tmp', 0777);\""
         ],
         "cs": "@php vendor\/bin\/phpcs --report-width=160 --standard=ruleset.xml --severity=1 --warning-severity=0 --extensions=php src utils tests",
-        "cs:fix": "@php vendor\/bin\/phpcbf --standard=ruleset.xml --extensions=php src utils tests",
         "test": "@php vendor\/bin\/phpunit",
         "coverage": "@php vendor\/bin\/phpunit --coverage-text"
     },
